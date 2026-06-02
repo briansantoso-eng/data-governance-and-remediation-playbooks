@@ -80,6 +80,45 @@ table, resolving primary keys and foreign keys, ready for a data catalog:
 }
 ```
 
+## How it works in the system
+
+The governance layer is built in stages, each one feeding the next:
+
+1. **Schema sourced from the live database (SQL).** Table and column definitions —
+   data types, nullability, primary keys, foreign keys — are extracted from the
+   operational platform's relational schema via SQL.
+
+2. **Schema transformed into structured JSON.** A Node script pivots the flat SQL
+   output into one document per table (PKs and FKs resolved, columns nested), shaped so
+   each table maps cleanly onto a data-catalog dataset. The tables the governance rules
+   depend on are foregrounded so the rule layer and the catalog layer share one model.
+
+3. **Rules expressed as conditions over that model.** Each Process Task Standard (PTS)
+   is a precise, testable condition on the schema — frequently *cross-table* (e.g. a
+   task row joined to a resource record to check an "is active" flag), which is exactly
+   the class of defect a single-column database constraint cannot catch.
+
+4. **Detection runs against production data.** Breaches are surfaced through saved
+   searches in the operational application (so any data owner can run the same view
+   consistently) and, for automation, through the equivalent queries against the
+   database directly.
+
+5. **Remediation playbooks turn a breach into an action.** Each rule is paired with a
+   playbook that classifies every breach down an explicit decision tree —
+   *auto-resolve → cancel → reassign → human review* — with safety **exclusions**
+   (substantive in-flight work is never silently cancelled), a **prioritisation** order
+   (the most operationally urgent breaches first), and, for owner-driven cases, a
+   time-boxed consultation loop with a default fallback so nothing stalls indefinitely.
+
+6. **Metadata published to a data catalog.** The structured JSON is the source for a
+   data-catalog (DataHub) ingest — dataset schemas, domains, and ownership become
+   discoverable and queryable alongside the governance context.
+
+The design is deliberately **environment-agnostic and automation-ready**: because
+detection and remediation are formalised as data conditions and decision trees rather
+than tribal judgement, each step can graduate from a manual run by a data owner to an
+assisted or fully automated agent without rewriting the governance logic.
+
 ## My contributions
 
 - **Authored the Process Task Standards (PTS)** — the governance rule set covering the
@@ -95,17 +134,22 @@ table, resolving primary keys and foreign keys, ready for a data catalog:
 
 ## Impact on the organisation
 
-- **Operational risk reduced** — latent, error-free-looking data defects (stalled work,
-  unfulfillable assignments) are now defined, detectable, and remediable instead of
-  silently accumulating.
-- **Knowledge made durable** — governance logic previously held by a handful of people
-  is captured as reviewable, version-controlled documentation.
-- **A foundation for automation** — by formalising detection and remediation as explicit
-  decision trees, the work establishes the prerequisites for agent-assisted and
-  fully-automated remediation.
-- **Catalog-ready metadata** — the schema tooling bridges an internal operational
-  database into an enterprise data-catalog format, improving discoverability and
-  ownership clarity across the organisation.
+- **Operational risk reduced at the source.** Latent, error-free-looking defects —
+  work assigned to departed staff, work routed to empty capability groups, contradictory
+  status/timestamp data — were previously invisible until they caused a stalled job or a
+  wrong report. They are now defined, detectable, and remediable conditions.
+- **Tribal knowledge made durable and auditable.** Governance logic once held by a
+  handful of engineers is captured as classified, version-controlled rules and
+  playbooks that a new team member — or an agent — can act on.
+- **Remediation that scales.** A single empty capability can put thousands of tasks into
+  breach at once; resolving it at the capability level clears them all. The playbooks
+  encode that leverage, with prioritisation that puts the most time-critical work first.
+- **A foundation for automation.** Formalising detection and remediation as explicit
+  data conditions and decision trees establishes the prerequisites for agent-assisted
+  and fully-automated remediation — the long-term direction of the initiative.
+- **Catalog-ready, discoverable metadata.** Bridging an internal operational database
+  into an enterprise data-catalog format improves discoverability, clarifies ownership,
+  and links each dataset to the governance rules that depend on it.
 
 ## Approach & skills demonstrated
 
